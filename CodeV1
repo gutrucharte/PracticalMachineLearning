@@ -1,7 +1,9 @@
-###Pre Processing 1###
-library(caret); library(randomForest)
+###Pre Processing###
+
+library(caret)
 
 data <- read.csv("pml-training.csv", na.strings = c("NA","#DIV/0!","")) #Adicionando e tornando tais valores como NA
+testingdata <- read.csv("pml-testing.csv", na.strings = c("NA","#DIV/0!","")) 
 dim(data)
 
 complete <- complete.cases(t(traindata)) #Complete cases serve para dizer quando a fileira é completa ou nao. Queremos saber o numero de colunas completas. #Dessa forma, sabemos qual coluna esta completa. 
@@ -26,6 +28,20 @@ validation <- data3[-partition,]
 
 ##Model training##
 model1 <- train(classe~., data=training, method="rf")
-model2 <- train(classe~., data=training, method="gbm")
+#model2 <- train(classe~., data=training, method="gbm")
+model1 #Higher accuracy
+
+
+##Performance with validation##
+Vperformance <- predict(model1, validation)
+Cmatrix <- confusionMatrix(Vperformance, validation$classe)
+Cmatrix
+
+
+##Testing##
+testing <- predict(model1, newdata=testingdata)
+testing
+
+
 
 
