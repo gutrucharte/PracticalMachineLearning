@@ -1,0 +1,31 @@
+###Pre Processing 1###
+library(caret); library(randomForest)
+
+data <- read.csv("pml-training.csv", na.strings = c("NA","#DIV/0!","")) #Adicionando e tornando tais valores como NA
+dim(data)
+
+complete <- complete.cases(t(traindata)) #Complete cases serve para dizer quando a fileira é completa ou nao. Queremos saber o numero de colunas completas. #Dessa forma, sabemos qual coluna esta completa. 
+
+data2 <- data[, complete] #Traindata só com as colunas verdadeiras (sem NA)  
+dim(data2)
+
+nzcolumns <- nearZeroVar(data2)
+nzcolumns
+
+data3 <- data2[,-c(1,2,3,4,5,7,nzcolumns)] #Excuindo colunas não necessárias 
+dim(data3)
+
+
+##Data spliting##
+set.seed(123)
+partition <- createDataPartition(data3$classe, p=0.75,list =FALSE)
+
+training <- data3[partition,]
+validation <- data3[-partition,]
+
+
+##Model training##
+model1 <- train(classe~., data=training, method="rf")
+model2 <- train(classe~., data=training, method="gbm")
+
+
