@@ -1,0 +1,109 @@
+---
+title: "Prediction Assignment Project"
+author: "Gustavo Trucharte"
+date: "5/24/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+The reader will note I've limited both the observations and variables size. Due to the size of observations and number of variables, the processing power available could not run the full model. Still, the reader will note the results were quite successful with the chosen variables. 
+
+
+
+## Importing
+The first step was to download the two data sets.
+Source:http://groupware.les.inf.puc-rio.br/har
+
+```{r data}
+library(caret)
+downloadcsv <- function(url, nastrings) {
+    temp <- tempfile()
+    download.file(url, temp, method = "curl")
+    data <- read.csv(temp, na.strings = nastrings)
+    unlink(temp)
+    return(data)
+}
+
+trainurl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+traindata <- downloadcsv(trainurl, c("", "NA", "#DIV/0!"))
+
+testurl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+testdata <- downloadcsv(testurl, c("", "NA", "#DIV/0!"))
+```
+
+
+## Pre Processing
+
+The second step was to review and clean up the data. It consists on 160 variables with over 19,622 observations. A large number of columns appeared to be incomplete (such as the “skewness_yaw_belt”, for example). To fix this problem, all observations containing “"NA","#DIV/0!" or were empty were transformed into “NA”s. The second step was to transpose the matrix so the “complete.cases” function could be used. After doing this, 60 variables were left. Additionally, the “nearZeroVar” function was used to eliminate variables with low variability and the descriptive data was also excluded (name, date, new_window). By the end of cleaning, there were 53 variables left, including “classe”.
+:
+
+```{r preprocessing}
+
+complete <- complete.cases(t(traindata)) 
+
+data2 <- traindata[, complete]  
+
+nzcolumns <- nearZeroVar(data2)
+data3 <- data2[,-c(1,2,3,4,5,7,nzcolumns)] 
+```
+
+```{r dim}
+dim(data3)
+```
+
+## Subsetting
+
+The data was storage and saved as “data3” and I set the seed as (1234). The second step was to partition the data. Given the number of obserations and available processing power, the data was restricted to 70% of observations. For cross-validation, using the createDataPartition, 75% was destined for training (“training”) and the remaining to validation (“validation”).  :
+
+```{r subsetting}
+set.seed(1234)
+partitionIII <- createDataPartition(data3$classe, p=0.7,list =FALSE)
+
+data3 <- data3[partitionIII,]
+dim(data3)
+
+partition <- createDataPartition(data3$classe, p=0.75, list=FALSE)
+dim(partition)
+
+
+training <- data3[partition,]
+validation <- data3[-partition,]
+```
+
+
+##Model training
+
+As we need to classify each observation, I tested two models: Random Forests and. By using it, multiple decision tress can be averaged resulting in higher accuracy and thus lower variance. The variables chosen were those with the higher variability. 
+
+``` {r model}
+model1 <- train(classe~ roll_belt + yaw_belt + pitch_forearm + magnet_dumbbell_y, data=training, method="rf")
+#model2 <- train(classe~., data=training, method="gbm")
+#+ magnet_dumbbell_y + magnet_dumbbell_x + pitch_belt
+
+model1 #Higher accuracy
+```
+
+
+##Model validation
+
+For accuracy measurement, a confusion matrix was used for the predictions vs. reference. To test more effectively (and prevent that over-fitting is not the case), the validation set is used. As expected, it showed a lower, but still high accuracy of 92.4%, resulting in an Out-of-sample error of 7.6%. 
+
+```{r validation}
+Vperformance <- predict(model1, validation)
+Cmatrix <- confusionMatrix(Vperformance, validation$classe)
+Cmatrix
+```
+
+
+##Testing
+
+The final step was to predict with the test set.
+
+```{r testing}
+testing <- predict(model1, newdata=testdata)
+testing
+```
